@@ -567,11 +567,11 @@ complex behavior will emerge.
 - `THandlerContext` - Context available to handlers (pure utilities, domain data)
 - `TExecutorContext` - Context available to executors (will have `dispatch` injected)
 
-**Returns:** `{ createEventLoop }`
+**Returns:** `createEventLoop` function that creates an event loop instance with the given configuration (parts can be swapped to facilitate testing / different executor contexts)
 
 ### `createEventLoop(config)`
 
-Creates an event loop instance.
+Creates an event loop instance with the given configuration.
 
 **Parameters:**
 - `config.getState` - Function to get current state
@@ -642,7 +642,7 @@ createEventLoop({
   handlerContext,
   executorContext,
 
-  // Optional hooks
+  // *Optional hooks*
   onDispose?: () => void,
   onHandlerNotFound?: (event: TEvents) => void,
   onExecutorNotFound?: (event: TEvents, effect: TEffects) => void,
@@ -653,11 +653,11 @@ createEventLoop({
 
 **Hook Descriptions:**
 
-- `onDispose` - Called when `loop.dispose()` is invoked, for cleanup
+- `onDispose` - Called when `loop.dispose()` is invoked, gives you the chance to cleanup resources or persist state
 - `onHandlerNotFound` - Called when an event has no registered handler
 - `onExecutorNotFound` - Called when an effect has no registered executor
-- `onListenerError` - Called when a subscription listener throws an error (prevents breaking the event loop)
-- `onExecutorError` - Called when an executor throws an error (sync or async). If not provided, sync errors crash the loop (fail-fast) and async errors are logged to console
+- `onListenerError` - Called when a subscription listener throws an error (even if undefined, listener errors never break the event loop)
+- `onExecutorError` - Called when an executor throws an error (sync or async). If not provided, sync errors crash the loop (fail-fast) and async errors are logged to console (no silent failures)
 
 ## Error Handling
 

@@ -475,7 +475,7 @@ loop.dispose();
 
 ## Type Testing
 
-Emergent includes comprehensive type tests to ensure TypeScript inference works correctly. You can write similar tests for your own emergent systems:
+Emergent includes a complete test suite to ensure TypeScript inference works correctly. You can write similar tests for your own emergent systems:
 
 ```typescript
 import { describe, test, expectTypeOf } from "vitest";

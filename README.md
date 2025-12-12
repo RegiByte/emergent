@@ -542,8 +542,6 @@ describe("My emergent system types", () => {
 
 The library uses `Expand` utility types to make TypeScript show full type definitions on hover instead of just type alias names. This means when you hover over `ctx` in a handler or executor, you'll see the complete structure of your context type, not just `HandlerContext` or `ExecutorContext`.
 
-````
-
 ### Why Type Tests?
 
 Type tests validate that:
@@ -632,7 +630,7 @@ type EffectExecutorMapBase<TEffects, TExecutorContext> = {
     TExecutorContext
   >
 }
-````
+```
 
 ### Configuration Hooks
 

@@ -1,0 +1,52 @@
+# Emergent + Braided + React Example
+
+This example demonstrates the trinity of libraries working together:
+
+## Architecture
+
+- **Emergent**: Event loop with handlers and executors
+- **Braided**: Resource lifecycle management
+- **Braided React**: React integration with hooks
+- **Zustand**: State management (as a Braided resource)
+- **Tailwind CSS**: Styling
+
+## Key Files
+
+- `src/system.ts` - All resources, events, effects, handlers, and executors
+- `src/App.tsx` - React UI component
+- `src/main.tsx` - Bootstrap and system initialization
+
+## Resources
+
+1. `timerResource` - setTimeout/clearTimeout management
+2. `storeResource` - Zustand store
+3. `loggerResource` - Console logging
+4. `eventHandlersResource` - Static event handlers
+5. `executorsResource` - Static executors
+6. `runtimeResource` - The event loop (depends on all others)
+
+## Events
+
+- `app:start` - Start the system
+- `app:stop` - Stop the system
+- `app:tick` - Timer tick (1 second)
+- `message:add` - Add a message (immediate or scheduled)
+- `message:scheduled` - Scheduled message delivery
+
+## Effects
+
+- `state:update` - Update Zustand store
+- `log` - Console logging
+- `timer:schedule` - Schedule a timer
+- `timer:cancel` - Cancel a timer
+- `timer:cancelAll` - Cancel all timers
+
+## UI Features
+
+- Start/Stop buttons
+- Real-time tick counter
+- Uptime display (HH:MM:SS)
+- Message input with immediate or scheduled delivery
+- Message list with timestamps
+- Reactive updates via useSyncExternalStore
+

@@ -182,13 +182,7 @@ test("increment handler", () => {
 Full TypeScript inference with exhaustiveness checking:
 
 ```typescript
-const createEventLoop = emergentSystem<
-  Events,
-  Effects,
-  State,
-  HCtx,
-  ECtx
->();
+const createEventLoop = emergentSystem<Events, Effects, State, HCtx, ECtx>();
 
 // Use satisfies for type checking without losing inference
 const handlers = {
@@ -545,6 +539,7 @@ The library uses `Expand` utility types to make TypeScript show full type defini
 ### Why Type Tests?
 
 Type tests validate that:
+
 - Handler contexts include user-defined properties
 - Executor contexts have dispatch automatically injected
 - Event discrimination works correctly
@@ -561,6 +556,7 @@ Creates a typed emergent system factory. This defines the simple rules from whic
 complex behavior will emerge.
 
 **Type Parameters:**
+
 - `TEvents` - Discriminated union of all event types (what can happen)
 - `TEffects` - Discriminated union of all effect types (what to do)
 - `TState` - State type (can be `void` for stateless systems)
@@ -574,6 +570,7 @@ complex behavior will emerge.
 Creates an event loop instance with the given configuration.
 
 **Parameters:**
+
 - `config.getState` - Function to get current state
 - `config.handlers` - Map of event type to handler function
 - `config.executor` - Map of effect type to executor function
@@ -589,47 +586,47 @@ type Handler<TEvent, TEffect, TState, TContext> = (
   state: TState,
   event: TEvent,
   context: TContext
-) => TEffect[]
+) => TEffect[];
 
 type Executor<TEffect, TContext> = (
   effect: TEffect,
   context: TContext
-) => void | Promise<void>
+) => void | Promise<void>;
 
 type EventLoopListener<TEvents, TEffects> = (
   event: TEvents,
   effects: TEffects[]
-) => void
+) => void;
 
 type EventLoop<TEvent, TEffect> = {
-  dispatch: (event: TEvent) => void
-  subscribe: (listener: EventLoopListener<TEvent, TEffect>) => () => void
-  dispose: () => void
-}
+  dispatch: (event: TEvent) => void;
+  subscribe: (listener: EventLoopListener<TEvent, TEffect>) => () => void;
+  dispose: () => void;
+};
 
 // Helper types for better DX
 type EventHandlerMap<TEvents, TEffects, TState, THandlerContext> = {
-  [K in TEvents['type']]: Handler<
+  [K in TEvents["type"]]: Handler<
     Extract<TEvents, { type: K }>,
     TEffects,
     TState,
     THandlerContext
-  >
-}
+  >;
+};
 
 type EffectExecutorMap<TEffects, TEvents, TExecutorContext> = {
-  [K in TEffects['type']]: Executor<
+  [K in TEffects["type"]]: Executor<
     Extract<TEffects, { type: K }>,
     TExecutorContext & { dispatch: (event: TEvents) => void }
-  >
-}
+  >;
+};
 
 type EffectExecutorMapBase<TEffects, TExecutorContext> = {
-  [K in TEffects['type']]: Executor<
+  [K in TEffects["type"]]: Executor<
     Extract<TEffects, { type: K }>,
     TExecutorContext
-  >
-}
+  >;
+};
 ```
 
 ### Configuration Hooks
@@ -838,13 +835,17 @@ const executor = {
 
 **Problem:** IDE hover shows `(parameter) ctx: HandlerContext` instead of showing your custom properties.
 
-**Solution:** This is a TypeScript display limitation. The types are correct, but TypeScript shows the type alias name instead of expanding it. Your code will still have full type checking and autocomplete. To see the expanded type, you can:
+**Solution:** Make sure you are using strict mode in your TypeScript configuration and that you are using the correct type aliases.
 
-1. Use "Go to Definition" on the type
-2. Hover over a specific property: `ctx.customHelper`
-3. Use inline type definitions instead of type aliases (less readable)
+In `tsconfig.json`:
 
-The important thing is that TypeScript **does** check the types correctly, even if the hover display is abbreviated.
+```json
+{
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
 
 ## Examples
 

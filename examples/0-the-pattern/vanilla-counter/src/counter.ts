@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 /**
  * THE OBSERVER PATTERN - Pure Implementation
- * 
+ *
  * This demonstrates the core pattern without any libraries:
  * 1. System lives in a closure (independent of React)
  * 2. React observes through hooks (crossing the boundary)
@@ -86,4 +86,3 @@ export function createCounter() {
 // This is the key: ONE instance, created once, never changes
 // Multiple components can observe the same system
 export const counter = createCounter();
-

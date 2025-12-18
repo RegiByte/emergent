@@ -379,7 +379,7 @@ describe("Type inference and safety", () => {
           increment: () => [{ type: "log" as const }],
           set: () => [{ type: "log" as const }],
         },
-        executor: {
+        executors: {
           log: () => {},
         },
         handlerContext: {},
@@ -415,7 +415,7 @@ describe("Type inference and safety", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { valid: () => [] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: {},
       });

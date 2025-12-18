@@ -169,7 +169,7 @@ transports.set("player2", {
 const loop = createEventLoop({
   getState: () => undefined,
   handlers,
-  executor,
+  executors: executor,
   handlerContext: {
     getCurrentTime: () => Date.now(),
   },

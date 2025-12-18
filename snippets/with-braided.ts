@@ -234,7 +234,7 @@ const gameLoopResource = defineResource({
     const loop = createEventLoop({
       getState: store.getState,
       handlers,
-      executor,
+      executors: executor,
       handlerContext: {},
       executorContext: {
         setState: store.setState,

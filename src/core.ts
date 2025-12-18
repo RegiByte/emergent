@@ -77,9 +77,11 @@ export type EventLoopListener<TEvents, TEffects> = (
  * EventLoop - The event loop instance
  */
 export type EventLoop<TEvent, TEffect> = {
+  dispose: () => void;
   dispatch: (event: TEvent) => void;
   subscribe: (listener: EventLoopListener<TEvent, TEffect>) => () => void;
-  dispose: () => void;
+  handleEvent: (event: TEvent) => TEffect[];
+  executeEffects: (effects: TEffect[], sourceEvent: TEvent) => Promise<void>;
 };
 
 /**
@@ -165,7 +167,7 @@ export type EventLoopConfig<
   // plain map of event type to handler function
   handlers: EventHandlerMap<TEvents, TEffects, TState, THandlerContext>;
   // plain map of effect type to executor function
-  executor: EffectExecutorMap<TEffects, TEvents, TExecutorContext>;
+  executors: EffectExecutorMap<TEffects, TEvents, TExecutorContext>;
   // context available to handlers (pure utilities, domain data)
   handlerContext: THandlerContext;
   // context available to executors (side effect utilities, resources)
@@ -230,12 +232,22 @@ export function emergentSystem<
         dispatch: DispatchFn<TEvents>;
       };
 
-      const dispatch: DispatchFn<TEvents> = (event) => {
+      /**
+       * handleEvent - Pure phase: looks up handler and computes effects
+       * 
+       * This function is pure (no side effects) and testable in isolation.
+       * It takes an event, finds the appropriate handler, gets current state,
+       * and computes what effects should emerge.
+       * 
+       * @param event - The event to handle
+       * @returns Array of effects that emerged from the handler
+       */
+      const handleEvent = (event: TEvents): TEffects[] => {
         // 1. Look up handler
         const handler = config.handlers[event.type as TEvents["type"]];
         if (!handler) {
           config.onHandlerNotFound?.(event);
-          return;
+          return [];
         }
 
         // 2. Get current state
@@ -248,7 +260,67 @@ export function emergentSystem<
           config.handlerContext as Expand<THandlerContext>
         );
 
-        // 4. Notify listeners (after handler, before executors)
+        return effects;
+      };
+
+      /**
+       * executeEffects - Impure phase: executes side effects
+       * 
+       * This function executes effects sequentially, awaiting each one.
+       * Returns a promise that resolves when all effects complete.
+       * Use this in tests when you need to wait for effects to finish.
+       * 
+       * @param effects - Array of effects to execute
+       * @param sourceEvent - The event that caused these effects (for error reporting)
+       * @returns Promise that resolves when all effects complete
+       */
+      const executeEffects = async (
+        effects: TEffects[],
+        sourceEvent: TEvents
+      ): Promise<void> => {
+        for (const effect of effects) {
+          // 4. Look up executor
+          const executor = config.executors[effect.type as TEffects["type"]];
+          if (!executor) {
+            config.onExecutorNotFound?.(sourceEvent, effect);
+            continue;
+          }
+
+          try {
+            // 5. Run executor function
+            await executor(
+              effect as Extract<TEffects, { type: typeof effect.type }>,
+              executorContext as Expand<
+                TExecutorContext & { dispatch: DispatchFn<TEvents> }
+              >
+            );
+          } catch (error) {
+            // Handle both sync and async errors
+            if (config.onExecutorError) {
+              config.onExecutorError(error, effect, sourceEvent);
+            } else {
+              // Re-throw to maintain fail-fast behavior
+              throw error;
+            }
+          }
+        }
+      };
+
+      /**
+       * dispatch - Main interface: handles event and executes effects
+       * 
+       * This is the primary way to interact with the event loop in production.
+       * It composes handleEvent (pure) and executeEffects (impure) in a
+       * fire-and-forget manner. Effects execute asynchronously but dispatch
+       * returns immediately.
+       * 
+       * @param event - The event to dispatch
+       */
+      const dispatch: DispatchFn<TEvents> = (event) => {
+        // Phase 1: Pure computation (what effects should emerge?)
+        const effects = handleEvent(event);
+
+        // Phase 2: Notify listeners (after handler, before executors)
         listeners.forEach((listener) => {
           try {
             listener(event, effects);
@@ -258,45 +330,14 @@ export function emergentSystem<
           }
         });
 
-        // 5. Execute each effect sequentially (impure, sync at this level but can be async at user-land level)
-        effects.forEach((effect) => {
-          const executor = config.executor[effect.type as TEffects["type"]];
-          if (!executor) {
-            config.onExecutorNotFound?.(event, effect);
-            return;
-          }
-
-          try {
-            const result = executor(
-              effect as Extract<TEffects, { type: typeof effect.type }>,
-              executorContext as Expand<
-                TExecutorContext & { dispatch: DispatchFn<TEvents> }
-              >
-            );
-
-            // Handle async executors (fire-and-forget with error handling)
-            if (result && typeof result.then === "function") {
-              result.catch((error) => {
-                if (config.onExecutorError) {
-                  config.onExecutorError(error, effect, event);
-                } else {
-                  // Default: log unhandled async errors to prevent silent failures
-                  console.error(
-                    `[Emergent] Unhandled async error in executor '${effect.type}':`,
-                    error
-                  );
-                }
-              });
-            }
-          } catch (error) {
-            // Synchronous errors
-            if (config.onExecutorError) {
-              config.onExecutorError(error, effect, event);
-            } else {
-              // Re-throw to maintain fail-fast behavior
-              throw error;
-            }
-          }
+        // Phase 3: Execute effects (fire-and-forget)
+        executeEffects(effects, event).catch((error) => {
+          // If we reach here, it means onExecutorError was not provided
+          // and an error was thrown. Log it to prevent silent failure.
+          console.error(
+            `[Emergent] Unhandled error in effect execution for event '${event.type}':`,
+            error
+          );
         });
       };
 
@@ -319,9 +360,11 @@ export function emergentSystem<
       };
 
       return {
+        dispose,
         dispatch,
         subscribe,
-        dispose,
+        handleEvent,
+        executeEffects,
       };
     };
 }

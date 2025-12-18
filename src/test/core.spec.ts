@@ -7,7 +7,7 @@ import { emergentSystem } from "../core";
 
 describe("emergent", () => {
   describe("Handler execution", () => {
-    test("should execute handler and produce effects", () => {
+    test("should execute handler and produce effects", async () => {
       // Define types
       type Events = { type: "test" };
       type Effects = { type: "effect1" } | { type: "effect2" };
@@ -34,12 +34,13 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => ({ value: 42 }),
         handlers: { test: handler },
-        executor: { effect1: executor1, effect2: executor2 },
+        executors: { effect1: executor1, effect2: executor2 },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
 
-      loop.dispatch({ type: "test" });
+      const effects = loop.handleEvent({ type: "test" });
+      await loop.executeEffects(effects, { type: "test" });
 
       expect(handler).toHaveBeenCalledTimes(1);
       expect(executor1).toHaveBeenCalledTimes(1);
@@ -70,7 +71,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => ({ value: 123 }),
         handlers: { test: handler },
-        executor: { log: () => {} },
+        executors: { log: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -82,7 +83,7 @@ describe("emergent", () => {
   });
 
   describe("Effect execution", () => {
-    test("should execute effects in order", () => {
+    test("should execute effects in order", async () => {
       type Events = { type: "test" };
       type Effects = { type: "effect"; order: number };
       type State = void;
@@ -108,7 +109,7 @@ describe("emergent", () => {
             { type: "effect", order: 3 },
           ],
         },
-        executor: {
+        executors: {
           effect: (effect) => {
             executionOrder.push(effect.order);
           },
@@ -117,7 +118,8 @@ describe("emergent", () => {
         executorContext: { dispatch: undefined as any },
       });
 
-      loop.dispatch({ type: "test" });
+      const effects = loop.handleEvent({ type: "test" });
+      await loop.executeEffects(effects, { type: "test" });
 
       expect(executionOrder).toEqual([1, 2, 3]);
     });
@@ -142,7 +144,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: {
+        executors: {
           effect: (_effect, ctx) => {
             capturedContext = ctx;
           },
@@ -182,7 +184,7 @@ describe("emergent", () => {
         getState: () => undefined,
         // @ts-expect-error - missing handler is missing
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
         onHandlerNotFound: (event) => {
@@ -199,7 +201,7 @@ describe("emergent", () => {
       warnSpy.mockRestore();
     });
 
-    test("should warn on missing executor", () => {
+    test("should warn on missing executor", async () => {
       type Events = { type: "test" };
       type Effects = { type: "effect1" } | { type: "effect2" };
       type State = void;
@@ -220,7 +222,7 @@ describe("emergent", () => {
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect1" }, { type: "effect2" }] },
         // @ts-expect-error - effect2 is missing
-        executor: {
+        executors: {
           effect1: (effect, ctx) => {
             // do something when effect1 needs to run
             ctx.callApi("https://api.example.com");
@@ -237,7 +239,8 @@ describe("emergent", () => {
         },
       });
 
-      loop.dispatch({ type: "test" });
+      const effects = loop.handleEvent({ type: "test" });
+      await loop.executeEffects(effects, { type: "test" });
 
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("No executor for effect: effect2")
@@ -268,7 +271,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "check" }] },
-        executor: {
+        executors: {
           check: (_effect, ctx) => {
             dispatchAvailable = typeof ctx.dispatch === "function";
           },
@@ -319,7 +322,7 @@ describe("emergent", () => {
             return [{ type: "done" }];
           },
         },
-        executor: {
+        executors: {
           dispatch: (effect, ctx) => {
             ctx.dispatch(effect.event);
           },
@@ -362,7 +365,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -402,7 +405,7 @@ describe("emergent", () => {
             return [{ type: "log" }];
           },
         },
-        executor: { log: () => {} },
+        executors: { log: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -439,7 +442,7 @@ describe("emergent", () => {
             { type: "log", message: `Value: ${event.value}` },
           ],
         },
-        executor: { log: () => {} },
+        executors: { log: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -473,7 +476,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -511,7 +514,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -553,7 +556,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => state,
         handlers: { test: () => [{ type: "mutate" }] },
-        executor: {
+        executors: {
           mutate: (_effect, ctx) => {
             executionOrder.push("executor");
             ctx.setState({ value: 999 });
@@ -599,7 +602,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: executor },
+        executors: { effect: executor },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
         onListenerError: errorHandler,
@@ -648,7 +651,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "effect" }] },
-        executor: { effect: () => {} },
+        executors: { effect: () => {} },
         handlerContext: {},
         executorContext: { dispatch: undefined as any },
       });
@@ -706,7 +709,7 @@ describe("emergent", () => {
             { type: "log", message: "Reset" },
           ],
         },
-        executor: {
+        executors: {
           "state:update": (effect) => {
             state = { count: effect.value };
           },
@@ -757,7 +760,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "failing-effect" }] },
-        executor: {
+        executors: {
           "failing-effect": () => {
             throw testError;
           },
@@ -777,7 +780,7 @@ describe("emergent", () => {
       );
     });
 
-    test("should re-throw synchronous executor errors if no handler provided", () => {
+    test("should re-throw synchronous executor errors if no handler provided", async () => {
       type Events = { type: "test" };
       type Effects = { type: "failing-effect" };
       type State = void;
@@ -797,7 +800,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "failing-effect" }] },
-        executor: {
+        executors: {
           "failing-effect": () => {
             throw testError;
           },
@@ -807,7 +810,10 @@ describe("emergent", () => {
         // No onExecutorError provided
       });
 
-      expect(() => loop.dispatch({ type: "test" })).toThrow(testError);
+      const effects = loop.handleEvent({ type: "test" });
+      await expect(
+        loop.executeEffects(effects, { type: "test" })
+      ).rejects.toThrow(testError);
     });
 
     test("should call onExecutorError for asynchronous executor errors", async () => {
@@ -831,7 +837,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "async-failing-effect" }] },
-        executor: {
+        executors: {
           "async-failing-effect": async () => {
             throw testError;
           },
@@ -877,7 +883,7 @@ describe("emergent", () => {
       const loop = createEventLoop({
         getState: () => undefined,
         handlers: { test: () => [{ type: "async-failing-effect" }] },
-        executor: {
+        executors: {
           "async-failing-effect": async () => {
             throw testError;
           },
@@ -893,14 +899,14 @@ describe("emergent", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Unhandled async error in executor"),
+        expect.stringContaining("[Emergent] Unhandled error in effect execution"),
         testError
       );
 
       consoleErrorSpy.mockRestore();
     });
 
-    test("should continue processing effects after executor error with handler", () => {
+    test("should continue processing effects after executor error with handler", async () => {
       type Events = { type: "test" };
       type Effects =
         | { type: "effect1" }
@@ -931,7 +937,7 @@ describe("emergent", () => {
             { type: "effect2" },
           ],
         },
-        executor: {
+        executors: {
           effect1: executor1,
           "failing-effect": () => {
             throw new Error("Failed");
@@ -943,7 +949,8 @@ describe("emergent", () => {
         onExecutorError: errorHandler,
       });
 
-      loop.dispatch({ type: "test" });
+      const effects = loop.handleEvent({ type: "test" });
+      await loop.executeEffects(effects, { type: "test" });
 
       // All executors should be called
       expect(executor1).toHaveBeenCalledTimes(1);

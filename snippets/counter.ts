@@ -114,7 +114,7 @@ let currentState: CounterState = { count: 0 };
 const loop = createEventLoop({
   getState: () => currentState,
   handlers,
-  executor,
+  executors: executor,
   handlerContext: {},
   executorContext: {
     setState: (state) => {

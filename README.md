@@ -1,31 +1,25 @@
-# 🌊 Emergent
+# Emergent
 
 > **Complex behavior from simple rules.**
 
-A minimal, type-safe library for event-driven systems where sophisticated patterns emerge naturally from simple handlers. No central controller. No framework magic. Just pure functions composing into emergent behavior.
+A minimal, type-safe library for event-driven systems where sophisticated patterns emerge naturally from simple handlers. No central controller, no framework overhead — just pure functions and clear data flow.
 
-## The Emergence Pattern
+## Core Concepts
 
-In nature, complexity emerges from simple rules:
-
-- Snowflakes from water molecules
-- Consciousness from neurons
-- Ecosystems from organisms
-
-In **Emergent**, sophisticated application behavior emerges from:
-
-```
-Event (what happened) → Handler (pure rule) → Effects (what to do) → Executor (side effects)
-```
-
-### Core Concepts
+Emergent builds on four simple concepts:
 
 1. **Event** - Discriminated union describing what happened (the cause)
 2. **Handler** - Pure function that transforms events into effects (the rule)
 3. **Effect** - Discriminated union describing what to do (the consequence)
 4. **Executor** - Function that performs side effects (the action)
 
-Complex patterns emerge from these simple interactions. No central governor needed.
+The flow is straightforward:
+
+```
+Event (what happened) → Handler (pure rule) → Effects (what to do) → Executor (side effects)
+```
+
+Complex patterns emerge from these simple interactions without central coordination.
 
 ## Installation
 
@@ -100,7 +94,7 @@ const handlers = {
 >;
 
 // 4. Define executors (side effects)
-const executor = {
+const executors = {
   "state:update": (effect, ctx) => {
     ctx.setState({ count: effect.count });
   },
@@ -116,7 +110,7 @@ let currentState: CounterState = { count: 0 };
 const loop = createEventLoop({
   getState: () => currentState,
   handlers,
-  executor,
+  executors,
   handlerContext: {},
   executorContext: {
     setState: (state) => {
@@ -138,21 +132,17 @@ loop.dispatch({ type: "reset" });
 loop.dispose();
 ```
 
-## Philosophy: Emergence from Simple Rules
+## Design Principles
 
-**Emergent** is built on the principle that complex, sophisticated behavior emerges naturally from the interaction of simple, well-defined rules.
+1. **No Central Controller** - Events flow through handlers without framework orchestration or global state coordination.
 
-### Core Principles
+2. **Simple Rules Compose** - Handlers are pure functions, effects are data, executors perform side effects.
 
-1. **No Central Governor** - No framework controlling your flow, no global orchestrator. Just events flowing through handlers.
+3. **Emergence is Reliable** - Complex patterns arise predictably from simple interactions, making them testable and debuggable.
 
-2. **Simple Rules Compose** - Handlers are pure functions. Effects are data. Executors perform side effects. That's it.
+4. **Data Over Code** - Events and effects are discriminated unions. Every transformation is inspectable data.
 
-3. **Emergence is Reliable** - Complex patterns arise predictably from simple interactions. Testable. Debuggable. Observable.
-
-4. **Data Over Code** - Events and effects are discriminated unions. Everything between cause and effect is inspectable data.
-
-5. **Causality is Explicit** - Every effect has a clear cause (event). Every event produces observable effects. The chain is traceable.
+5. **Causality is Explicit** - Every effect has a clear cause, every event produces observable effects. The chain is traceable.
 
 6. **User-Defined Patterns** - The library provides the mechanism. You define what emerges.
 
@@ -160,7 +150,7 @@ loop.dispose();
 
 ### Testability
 
-Handlers are pure functions - easy to test without mocks:
+Handlers are pure functions that require no mocking:
 
 ```typescript
 test("increment handler", () => {
@@ -179,7 +169,7 @@ test("increment handler", () => {
 
 ### Type Safety
 
-Full TypeScript inference with exhaustiveness checking:
+TypeScript provides full inference with exhaustiveness checking:
 
 ```typescript
 const createEventLoop = emergentSystem<Events, Effects, State, HCtx, ECtx>();
@@ -190,13 +180,13 @@ const handlers = {
     // TypeScript knows all types and ensures all events are handled
     return [{ type: "state:update", count: state.count + 1 }];
   },
-  // TypeScript error if you forget any event types!
+  // TypeScript error if you forget any event types
 } satisfies EventHandlerMap<Events, Effects, State, HCtx>;
 ```
 
 ### Helper Types
 
-The library exports helper types for better DX:
+The library exports helper types for better developer experience:
 
 ```typescript
 import { EventHandlerMap, EffectExecutorMap } from "emergent";
@@ -204,7 +194,7 @@ import { EventHandlerMap, EffectExecutorMap } from "emergent";
 // Derive handler map type
 type Handlers = EventHandlerMap<MyEvents, MyEffects, MyState, HCtx>;
 
-// Derive executor map type (dispatch is automatically included!)
+// Derive executor map type (dispatch is automatically included)
 type Executors = EffectExecutorMap<MyEffects, MyEvents, ECtx>;
 
 // Use Partial for modular/plugin systems
@@ -212,8 +202,7 @@ type PartialHandlers = Partial<Handlers>;
 type PartialExecutors = Partial<Executors>;
 ```
 
-**Note:** `EffectExecutorMap` automatically includes `dispatch` in your executor context, so you can call `ctx.dispatch()` without additional type annotations.
-This is useful for when you want to feed new events back into the system. For advanced cases where you don't need dispatch, use `EffectExecutorMapBase`.
+**Note:** `EffectExecutorMap` automatically includes `dispatch` in your executor context, allowing you to dispatch new events from executors. For cases where dispatch is not needed, use `EffectExecutorMapBase`.
 
 ### Composability
 
@@ -265,7 +254,7 @@ const gameLoopResource = defineResource({
         setState: store.setState,
         transports,
         timers,
-        // Note: dispatch is automatically injected by the library!
+        // Note: dispatch is automatically injected by the library
         // You don't need to provide it in executorContext
       },
     });
@@ -274,18 +263,246 @@ const gameLoopResource = defineResource({
 });
 ```
 
-**Key Points:**
+**Integration notes:**
 
-- The `dispatch` function is automatically injected into the executor context by the library
-- `getState` is now a formal parameter, not part of handlerContext
-- You only need to provide your own domain utilities and resources
+- `dispatch` is automatically injected into the executor context
+- `getState` is a formal parameter, not part of handlerContext
+- Provide your own domain utilities and resources in the contexts
+
+## Testing
+
+Emergent provides multiple strategies for testing your event-driven logic, from testing pure handlers in isolation to testing complete event flows with side effects.
+
+### Testing Pure Handlers (Unit Tests)
+
+Handlers are pure functions that can be tested directly without any framework setup:
+
+```typescript
+import { test, expect } from "vitest";
+
+test("increment handler computes correct effects", () => {
+  const state = { count: 5 };
+  const event = { type: "increment" as const };
+  const ctx = {};
+
+  const effects = handlers.increment(state, event, ctx);
+
+  expect(effects).toEqual([
+    { type: "state:update", count: 6 },
+    { type: "log", message: "Incremented to 6" },
+  ]);
+});
+
+test("decrement below zero shows warning", () => {
+  const state = { count: 0 };
+  const event = { type: "decrement" as const };
+  const ctx = {};
+
+  const effects = handlers.decrement(state, event, ctx);
+
+  expect(effects).toContainEqual({ type: "warning", message: "Count is at minimum" });
+});
+```
+
+### Testing with handleEvent (Integration Tests)
+
+Use `handleEvent` to test the event loop's handler resolution without executing side effects:
+
+```typescript
+test("event loop routes increment to correct handler", () => {
+  const loop = createEventLoop({ /* config */ });
+
+  const effects = loop.handleEvent({ type: "increment" });
+
+  expect(effects).toEqual([
+    { type: "state:update", count: 1 },
+    { type: "log", message: "Incremented to 1" },
+  ]);
+});
+
+test("unknown event produces no effects", () => {
+  const loop = createEventLoop({
+    /* config */
+    onHandlerNotFound: vi.fn(),
+  });
+
+  const effects = loop.handleEvent({ type: "unknown" } as any);
+
+  expect(effects).toEqual([]);
+});
+```
+
+### Testing with executeEffects (Side Effect Tests)
+
+Use `executeEffects` to test that effects execute correctly:
+
+```typescript
+test("executeEffects runs all executors", async () => {
+  const setState = vi.fn();
+  const logger = vi.fn();
+
+  const loop = createEventLoop({
+    getState: () => ({ count: 0 }),
+    handlers,
+    executors: {
+      "state:update": (effect, ctx) => ctx.setState({ count: effect.count }),
+      log: (effect, ctx) => ctx.logger(effect.message),
+    },
+    handlerContext: {},
+    executorContext: { setState, logger },
+  });
+
+  const effects = [
+    { type: "state:update" as const, count: 5 },
+    { type: "log" as const, message: "Updated" },
+  ];
+
+  await loop.executeEffects(effects, { type: "test" as const });
+
+  expect(setState).toHaveBeenCalledWith({ count: 5 });
+  expect(logger).toHaveBeenCalledWith("Updated");
+});
+
+test("executeEffects handles async executors", async () => {
+  const apiCall = vi.fn().mockResolvedValue({ success: true });
+
+  const loop = createEventLoop({
+    getState: () => ({}),
+    handlers: {},
+    executors: {
+      "api:call": async (effect, ctx) => {
+        await ctx.apiCall(effect.url);
+      },
+    },
+    handlerContext: {},
+    executorContext: { apiCall },
+  });
+
+  const effects = [{ type: "api:call" as const, url: "/api/data" }];
+
+  await loop.executeEffects(effects, { type: "trigger" as const });
+
+  expect(apiCall).toHaveBeenCalledWith("/api/data");
+});
+```
+
+### Testing Complete Event Flows (End-to-End)
+
+Combine `handleEvent` and `executeEffects` for complete control in tests:
+
+```typescript
+test("increment event updates state correctly", async () => {
+  let state = { count: 0 };
+
+  const loop = createEventLoop({
+    getState: () => state,
+    handlers,
+    executors: {
+      "state:update": (effect) => {
+        state = { count: effect.count };
+      },
+      log: () => {},
+    },
+    handlerContext: {},
+    executorContext: {},
+  });
+
+  // Phase 1: Compute effects
+  const effects = loop.handleEvent({ type: "increment" });
+  expect(effects).toHaveLength(2);
+
+  // Phase 2: Execute effects
+  await loop.executeEffects(effects, { type: "increment" });
+
+  // Phase 3: Verify final state
+  expect(state.count).toBe(1);
+});
+```
+
+### Testing Error Handling
+
+Test that your error handlers work correctly:
+
+```typescript
+test("executor errors are caught and handled", async () => {
+  const errorHandler = vi.fn();
+
+  const loop = createEventLoop({
+    getState: () => ({}),
+    handlers: { test: () => [{ type: "failing" }] },
+    executors: {
+      failing: () => {
+        throw new Error("Executor failed");
+      },
+    },
+    handlerContext: {},
+    executorContext: {},
+    onExecutorError: errorHandler,
+  });
+
+  const effects = loop.handleEvent({ type: "test" });
+  await loop.executeEffects(effects, { type: "test" });
+
+  expect(errorHandler).toHaveBeenCalledWith(
+    expect.any(Error),
+    { type: "failing" },
+    { type: "test" }
+  );
+});
+```
+
+### Testing with dispatch (Production Behavior)
+
+Use `dispatch` when you want to test the complete fire-and-forget behavior:
+
+```typescript
+test("dispatch triggers full event flow", async () => {
+  const setState = vi.fn();
+
+  const loop = createEventLoop({
+    getState: () => ({ count: 0 }),
+    handlers,
+    executors: {
+      "state:update": (effect, ctx) => ctx.setState({ count: effect.count }),
+      log: () => {},
+    },
+    handlerContext: {},
+    executorContext: { setState },
+  });
+
+  loop.dispatch({ type: "increment" });
+
+  // Wait for async effects to complete
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(setState).toHaveBeenCalledWith({ count: 1 });
+});
+```
+
+### Testing Recommendations
+
+**For unit tests:**
+- Test handlers directly as pure functions
+- No event loop needed, just call `handlers.eventType(state, event, ctx)`
+
+**For integration tests:**
+- Use `handleEvent` to test handler resolution and effect computation
+- No side effects executed, fast and deterministic
+
+**For side effect tests:**
+- Use `handleEvent` + `await executeEffects` for full control
+- Can verify side effects complete before assertions
+
+**For end-to-end tests:**
+- Use `dispatch` for production-like behavior
+- Remember to wait for async effects if needed
 
 ## Observability with Subscriptions
 
-Emergent includes a subscription system that allows external observers to track the event loop's behavior without interfering with its operation. This is perfect for:
+The subscription system allows external observers to track event loop behavior without interference. Use cases include:
 
 - **DevTools integration** - Build Redux DevTools-style debugging
-- **Logging & auditing** - Track all events and effects
+- **Logging and auditing** - Track all events and effects
 - **Analytics** - Measure event patterns and frequencies
 - **Testing** - Assert on event/effect sequences
 - **Debugging** - Observe flow without modifying code
@@ -345,17 +562,17 @@ const auditUnsub = loop.subscribe((event, effects) => {
 
 ### Listener Timing
 
-Listeners are notified **after the handler runs but before effects are executed**:
+Listeners are notified after the handler runs but before effects execute:
 
 ```
 Event → Handler → [NOTIFY LISTENERS] → Execute Effects
 ```
 
-This means listeners observe the pure transformation (event → effects) before any side effects occur.
+Listeners observe the pure transformation (event → effects) before side effects occur.
 
 ### Error Handling
 
-Listener errors won't break your event loop. Use the `onListenerError` hook to handle them:
+Listener errors are automatically caught. Use the `onListenerError` hook to handle them:
 
 ```typescript
 const loop = createEventLoop({
@@ -469,7 +686,7 @@ loop.dispose();
 
 ## Type Testing
 
-Emergent includes a complete test suite to ensure TypeScript inference works correctly. You can write similar tests for your own emergent systems:
+Emergent includes a test suite to verify TypeScript inference. You can write similar tests for your systems:
 
 ```typescript
 import { describe, test, expectTypeOf } from "vitest";
@@ -534,36 +751,34 @@ describe("My emergent system types", () => {
 
 ### Type Expansion
 
-The library uses `Expand` utility types to make TypeScript show full type definitions on hover instead of just type alias names. This means when you hover over `ctx` in a handler or executor, you'll see the complete structure of your context type, not just `HandlerContext` or `ExecutorContext`.
+The library uses `Expand` utility types to show full type definitions on hover instead of type alias names. Hovering over `ctx` in a handler or executor shows the complete context structure rather than just the type name.
 
-### Why Type Tests?
+### Running Type Tests
 
-Type tests validate that:
+Type tests validate:
 
 - Handler contexts include user-defined properties
 - Executor contexts have dispatch automatically injected
-- Event discrimination works correctly
-- Effect discrimination works correctly
+- Event and effect discrimination work correctly
 - Exhaustiveness checking catches missing handlers/executors
 
-Run type tests with: `npm test`
+Run tests with: `npm test`
 
 ## API Reference
 
 ### `emergentSystem<TEvents, TEffects, TState, THandlerContext, TExecutorContext>()`
 
-Creates a typed emergent system factory. This defines the simple rules from which
-complex behavior will emerge.
+Creates a typed emergent system factory.
 
 **Type Parameters:**
 
 - `TEvents` - Discriminated union of all event types (what can happen)
 - `TEffects` - Discriminated union of all effect types (what to do)
-- `TState` - State type (can be `void` for stateless systems)
+- `TState` - State type (use `void` for stateless systems)
 - `THandlerContext` - Context available to handlers (pure utilities, domain data)
-- `TExecutorContext` - Context available to executors (will have `dispatch` injected)
+- `TExecutorContext` - Context available to executors (`dispatch` will be injected)
 
-**Returns:** `createEventLoop` function that creates an event loop instance with the given configuration (parts can be swapped to facilitate testing / different executor contexts)
+**Returns:** `createEventLoop` function that creates an event loop instance with the given configuration. Parts can be swapped to facilitate testing or alternate executor contexts.
 
 ### `createEventLoop(config)`
 
@@ -573,11 +788,61 @@ Creates an event loop instance with the given configuration.
 
 - `config.getState` - Function to get current state
 - `config.handlers` - Map of event type to handler function
-- `config.executor` - Map of effect type to executor function
+- `config.executors` - Map of effect type to executor function
 - `config.handlerContext` - Context passed to all handlers (pure utilities, domain data)
 - `config.executorContext` - Context passed to all executors (dispatch will be injected)
 
-**Returns:** `{ dispatch, subscribe, dispose }`
+**Returns:** Event loop instance with the following methods:
+
+#### `dispatch(event: TEvent): void`
+
+Main interface for production use. Computes effects from the event and executes them asynchronously (fire-and-forget).
+
+```typescript
+loop.dispatch({ type: "increment" });
+// Handler runs, effects execute asynchronously
+```
+
+#### `handleEvent(event: TEvent): TEffect[]`
+
+*New in v1.1.0* - Pure function that computes effects from an event without executing them. Useful for testing handler logic in isolation.
+
+```typescript
+const effects = loop.handleEvent({ type: "increment" });
+expect(effects).toEqual([{ type: "state:update", count: 1 }]);
+```
+
+#### `executeEffects(effects: TEffect[], sourceEvent: TEvent): Promise<void>`
+
+*New in v1.1.0* - Executes effects and returns a Promise that resolves when all effects complete. Useful for testing side effects and waiting for async operations.
+
+```typescript
+const effects = loop.handleEvent({ type: "increment" });
+await loop.executeEffects(effects, { type: "increment" });
+// All effects are now complete
+```
+
+#### `subscribe(listener: EventLoopListener): () => void`
+
+Adds a listener that is notified after each event is handled (before effects execute). Returns an unsubscribe function.
+
+```typescript
+const unsubscribe = loop.subscribe((event, effects) => {
+  console.log("Event:", event.type);
+  console.log("Effects:", effects);
+});
+
+// Later: stop listening
+unsubscribe();
+```
+
+#### `dispose(): void`
+
+Cleans up the event loop by removing all listeners and calling the `onDispose` hook if provided.
+
+```typescript
+loop.dispose();
+```
 
 ### Types
 
@@ -599,9 +864,11 @@ type EventLoopListener<TEvents, TEffects> = (
 ) => void;
 
 type EventLoop<TEvent, TEffect> = {
+  dispose: () => void;
   dispatch: (event: TEvent) => void;
   subscribe: (listener: EventLoopListener<TEvent, TEffect>) => () => void;
-  dispose: () => void;
+  handleEvent: (event: TEvent) => TEffect[];
+  executeEffects: (effects: TEffect[], sourceEvent: TEvent) => Promise<void>;
 };
 
 // Helper types for better DX
@@ -635,7 +902,7 @@ type EffectExecutorMapBase<TEffects, TExecutorContext> = {
 createEventLoop({
   getState: () => TState,
   handlers,
-  executor,
+  executors,
   handlerContext,
   executorContext,
 
@@ -648,25 +915,25 @@ createEventLoop({
 })
 ```
 
-**Hook Descriptions:**
+**Hook descriptions:**
 
-- `onDispose` - Called when `loop.dispose()` is invoked, gives you the chance to cleanup resources or persist state
+- `onDispose` - Called when `loop.dispose()` is invoked. Use this to cleanup resources or persist state
 - `onHandlerNotFound` - Called when an event has no registered handler
 - `onExecutorNotFound` - Called when an effect has no registered executor
-- `onListenerError` - Called when a subscription listener throws an error (even if undefined, listener errors never break the event loop)
-- `onExecutorError` - Called when an executor throws an error (sync or async). If not provided, sync errors crash the loop (fail-fast) and async errors are logged to console (no silent failures)
+- `onListenerError` - Called when a subscription listener throws. Listener errors never break the event loop
+- `onExecutorError` - Called when an executor throws (sync or async). Without this hook, sync errors crash the loop (fail-fast) and async errors log to console
 
 ## Error Handling
 
-### Philosophy: Fail-Fast by Default
+### Fail-Fast by Default
 
-Emergent follows a fail-fast philosophy. If something goes wrong, the event loop crashes by default. This forces you to write correct code and reveals bugs immediately.
+The event loop crashes by default when errors occur. This reveals bugs immediately and encourages correct code.
 
 ### Handlers Should Never Throw
 
-Handlers are pure functions. They should never throw errors. If a handler throws, it indicates a programmer error (bug in your code), and the event loop will crash.
+Handlers are pure functions and should not throw errors. If a handler throws, the event loop will crash.
 
-**Good**: Return an error effect instead of throwing
+**Recommended approach:** Return an error effect instead of throwing
 
 ```typescript
 const handlers = {
@@ -679,24 +946,24 @@ const handlers = {
 } satisfies EventHandlerMap<Events, Effects, State, HandlerContext>;
 ```
 
-**Bad**: Throwing from a handler
+**Not recommended:** Throwing from a handler
 
 ```typescript
 const handlers = {
   divide: (state, event, ctx) => {
     if (event.divisor === 0) {
-      throw new Error("Division by zero"); // ❌ Will crash event loop
+      throw new Error("Division by zero"); // Will crash event loop
     }
     return [{ type: "state:update", result: event.dividend / event.divisor }];
   },
 };
 ```
 
-### Executors Can Throw (With Handling)
+### Executors Can Throw
 
-Executors interact with the real world, like networks, databases, file systems. These can fail for operational reasons, not just programmer errors.
+Executors interact with networks, databases, and file systems — operations that can fail for operational reasons beyond programmer errors.
 
-By default, if an executor throws, the event loop crashes (fail-fast). However, you can provide an `onExecutorError` hook to handle errors gracefully:
+By default, executor errors crash the event loop (fail-fast). Provide an `onExecutorError` hook to handle errors gracefully:
 
 ```typescript
 const loop = createEventLoop({
@@ -733,7 +1000,7 @@ const loop = createEventLoop({
 
 ### Async Executors and Error Handling
 
-Executors can be async, but the library doesn't await them (fire-and-forget). However, async errors **are** caught and passed to `onExecutorError`:
+Executors can be async, but the library does not await them (fire-and-forget). Async errors are caught and passed to `onExecutorError`:
 
 ```typescript
 const executor = {
@@ -754,9 +1021,9 @@ const loop = createEventLoop({
 });
 ```
 
-**Important**: Async errors are caught **after** the event loop continues. The event loop never blocks waiting for async effects to complete.
+**Note:** Async errors are caught after the event loop continues. The event loop never blocks waiting for async effects to complete.
 
-If you don't provide `onExecutorError`, async errors are logged to console to prevent silent failures:
+Without `onExecutorError`, async errors log to console to prevent silent failures:
 
 ```
 [Emergent] Unhandled async error in executor 'http:fetch': TypeError: Failed to fetch
@@ -764,7 +1031,7 @@ If you don't provide `onExecutorError`, async errors are logged to console to pr
 
 ### Best Practices for Async Work
 
-Since executors are fire-and-forget, handle errors inside your async executors and dispatch events to communicate results:
+Since executors are fire-and-forget, handle errors inside async executors and dispatch events to communicate results:
 
 ```typescript
 const executor = {
@@ -785,16 +1052,16 @@ const executor = {
 } satisfies EffectExecutorMap<Effects, Events, ExecutorContext>;
 ```
 
-This pattern:
+This approach:
 
-- ✅ Makes errors observable (they become events)
-- ✅ Allows handlers to respond to errors
-- ✅ Maintains the event-driven flow
-- ✅ Keeps error handling in your domain model
+- Makes errors observable as events
+- Allows handlers to respond to errors
+- Maintains the event-driven flow
+- Keeps error handling in your domain model
 
 ### Listener Errors
 
-Listeners are observers and should never break the system. Listener errors are automatically caught and passed to `onListenerError` if provided:
+Listeners are observers and should not break the system. Listener errors are automatically caught and passed to `onListenerError` if provided:
 
 ```typescript
 const loop = createEventLoop({
@@ -811,31 +1078,31 @@ const loop = createEventLoop({
 
 ### "Property 'dispatch' does not exist on type 'ExecutorContext'"
 
-**Problem:** You're getting a type error when trying to use `ctx.dispatch()` in an executor.
+**Problem:** Type error when using `ctx.dispatch()` in an executor.
 
-**Solution:** Make sure you're using `EffectExecutorMap` (with 3 type parameters including Events):
+**Solution:** Use `EffectExecutorMap` with 3 type parameters including Events:
 
 ```typescript
-// ❌ Wrong - missing Events type parameter
+// Wrong - missing Events type parameter
 const executor = {
   myEffect: (effect, ctx) => {
-    ctx.dispatch({ type: "next" }); // Type error!
+    ctx.dispatch({ type: "next" }); // Type error
   },
 } satisfies EffectExecutorMapBase<Effects, ExecutorContext>;
 
-// ✅ Correct - EffectExecutorMap includes dispatch automatically
+// Correct - EffectExecutorMap includes dispatch automatically
 const executor = {
   myEffect: (effect, ctx) => {
-    ctx.dispatch({ type: "next" }); // Works!
+    ctx.dispatch({ type: "next" }); // Works
   },
 } satisfies EffectExecutorMap<Effects, Events, ExecutorContext>;
 ```
 
 ### Handler context not showing custom properties
 
-**Problem:** IDE hover shows `(parameter) ctx: HandlerContext` instead of showing your custom properties.
+**Problem:** IDE hover shows `(parameter) ctx: HandlerContext` instead of custom properties.
 
-**Solution:** Make sure you are using strict mode in your TypeScript configuration and that you are using the correct type aliases.
+**Solution:** Enable strict mode in TypeScript configuration and verify type aliases are correct.
 
 In `tsconfig.json`:
 
@@ -849,8 +1116,13 @@ In `tsconfig.json`:
 
 ## Examples
 
-See the [`examples/`](./examples) directory for:
+See the [`examples/`](./examples) directory for working demonstrations:
 
+- **0-the-pattern/** - Vanilla implementations showing the observer pattern
+- **1-state-management-and-time/** - Integration with Zustand and timers
+- **2-websocket-chat/** - Real-time chat with WebSocket transport
+
+Additional snippets in [`snippets/`](./snippets):
 - **counter.ts** - Stateful counter with state management
 - **stateless-router.ts** - Event routing without state
 - **with-braided.ts** - Integration with Braided resource system
@@ -863,75 +1135,53 @@ See the [`examples/`](./examples) directory for:
 
 **Emergent:** `(State, Event) → Effects[]` then `Effect → void`
 
-Redux returns new state directly. Emergent returns effect descriptions that are interpreted separately. Complex state management emerges from simple transformations.
+Redux returns new state directly. Emergent returns effect descriptions that are interpreted separately.
 
 ### vs Elm Architecture
 
 **Elm:** `update : Msg -> Model -> (Model, Cmd Msg)`
 
-**Emergent:** Separates handlers (pure) from executors (impure). Sophisticated patterns emerge from this separation.
+**Emergent:** Separates handlers (pure) from executors (impure).
 
 ### vs re-frame
 
-Similar to re-frame's event/effect architecture, but with TypeScript discriminated unions for type safety. Like re-frame, complex application behavior emerges from simple event/effect rules.
+Similar to re-frame's event/effect architecture, with TypeScript discriminated unions for type safety. Complex application behavior emerges from simple event/effect rules.
 
-## Philosophy: Inspired by Nature and Computation
+## Philosophy
 
-**Emergent** is inspired by the principle of emergence found throughout nature and computation:
+Emergent is inspired by emergence patterns found in nature and computation.
 
-### Natural Emergence
-
-- **Conway's Game of Life** - Complex patterns from simple cellular rules
-- **Ant colonies** - Sophisticated behavior without central control
-- **Neural networks** - Intelligence emerges from simple neurons
-- **Ecosystems** - Biodiversity emerges from organism interactions
-- **The Universe** - All patterns emerge from fundamental rules
-
-### Computational Emergence
-
-- **re-frame** (ClojureScript) - Data-driven event handling
-- **Elm Architecture** - Pure functions composing into applications
-- **Rich Hickey's philosophy** - Simple rules, powerful composition
-- **Cellular Automata** - Complexity from simplicity
-
-### Our Principles
+### Principles
 
 1. **Data over code** - Events and effects are data structures
 2. **Simple over complex** - Minimal rules that compose
-3. **Observable by default** - Watch emergence happen in real-time
+3. **Observable by default** - Watch patterns emerge in real-time
 4. **Testable by design** - Test the rules, trust the emergence
-5. **No central governor** - Decentralized, composable architecture
-6. **Type-safe emergence** - TypeScript ensures correctness
-7. **Zero magic** - No decorators, no reflection, just pure functions and data
+5. **No central controller** - Decentralized, composable architecture
+6. **Type-safe** - TypeScript ensures correctness
+7. **No magic** - No decorators, no reflection, just pure functions and data
 
-## Philosophy Over Framework
+## Pattern Over Framework
 
-Emergent is ~330 lines of code embodying a pattern. We encourage you to:
+Emergent is ~330 lines of code embodying a pattern:
 
 1. Read the source (`src/core.ts`)
 2. Understand the pattern
-3. Copy and adapt it for your needs if necessary
+3. Adapt it for your needs
 
 This is not a black box. This is a philosophy you can make your own.
 
-## Inspiration & Related Projects
-
-### Emergence in Nature & Computation
-
-- [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) - Emergence in action
-- [Cellular Automata](https://en.wikipedia.org/wiki/Cellular_automaton) - Complex patterns from simple rules
-- Ant colony optimization - Collective intelligence without central control
+## Related Projects
 
 ### Functional Architectures
 
 - [re-frame](https://github.com/day8/re-frame) (ClojureScript) - Event-driven architecture
 - [Elm Architecture](https://guide.elm-lang.org/architecture/) - Pure functional UI
 - [Redux](https://redux.js.org/) - Predictable state containers
-- Rich Hickey's ["Simple Made Easy"](https://www.infoq.com/presentations/Simple-Made-Easy/) - Philosophy of simplicity
 
-### Complementary Tools
+### Complementary Libraries
 
-- [Braided](https://github.com/RegiByte/braided) - Untangle your stateful resources
+- [Braided](https://github.com/RegiByte/braided) - Resource lifecycle management
 - [Braided React](https://github.com/RegiByte/braided-react) - React integration for Braided
 
 ## License
@@ -940,8 +1190,8 @@ ISC
 
 ## Contributing
 
-Issues and PRs welcome! This library has been battle-tested in real-world distributed systems managing complex event flows, timers, WebSocket connections, and stateful resources.
+Issues and PRs welcome. This library has been tested in distributed systems managing event flows, timers, WebSocket connections, and stateful resources.
 
 ---
 
-**Simple rules. Emergent systems. No central governor. No framework magic. Trust the emergence.** 🌊
+**Simple rules. Emergent systems. Trust the emergence.** 🌊

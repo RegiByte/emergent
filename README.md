@@ -1135,7 +1135,7 @@ Additional snippets in [`snippets/`](./snippets):
 
 **Emergent:** `(State, Event) → Effects[]` then `Effect → void`
 
-Redux returns new state directly. Emergent returns effect descriptions that are interpreted separately.
+Redux returns new state directly. Emergent returns effect descriptions that are interpreted separately. State update is one type of effect, the other types depend on your domain use case.
 
 ### vs Elm Architecture
 
@@ -1146,6 +1146,8 @@ Redux returns new state directly. Emergent returns effect descriptions that are 
 ### vs re-frame
 
 Similar to re-frame's event/effect architecture, with TypeScript discriminated unions for type safety. Complex application behavior emerges from simple event/effect rules.
+
+The important point to note here is that Redux/Mobx/Zustand/Jotai handle state storage and distribution, generally they don't prescribe techniques for other types of effects that your application may need to execute, beyond the effect of updating the state.
 
 ## Philosophy
 

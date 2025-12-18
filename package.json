@@ -1,6 +1,6 @@
 {
   "name": "emergent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Complex behavior from simple rules. A minimal, type-safe library for event-driven systems where sophisticated patterns emerge naturally from simple handlers.",
   "main": "./dist/index.cjs",

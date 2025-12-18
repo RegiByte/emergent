@@ -1167,7 +1167,7 @@ Emergent is inspired by emergence patterns found in nature and computation.
 
 ## Pattern Over Framework
 
-Emergent is ~330 lines of code embodying a pattern:
+Emergent is ~370 lines of code embodying a pattern:
 
 1. Read the source (`src/core.ts`)
 2. Understand the pattern

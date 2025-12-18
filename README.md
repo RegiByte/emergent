@@ -1147,7 +1147,9 @@ Redux returns new state directly. Emergent returns effect descriptions that are 
 
 Similar to re-frame's event/effect architecture, with TypeScript discriminated unions for type safety. Complex application behavior emerges from simple event/effect rules.
 
-The important point to note here is that Redux/Mobx/Zustand/Jotai handle state storage and distribution, generally they don't prescribe techniques for other types of effects that your application may need to execute, beyond the effect of updating the state.
+---
+
+The important point to note here is that Redux/Mobx/Zustand/Jotai handle state storage/update and distribution, generally they don't prescribe techniques for other types of effects that your application may need to execute, beyond the effect of updating the state.
 
 ## Philosophy
 
